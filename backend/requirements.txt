@@ -1,0 +1,6 @@
+opencv-python
+easyocr
+numpy
+flask
+python-docx
+xlsxwriter
