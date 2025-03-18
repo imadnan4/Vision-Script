@@ -4,3 +4,6 @@ numpy
 flask
 python-docx
 xlsxwriter
+flask-cors
+pillow
+pytesseract

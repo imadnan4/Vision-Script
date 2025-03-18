@@ -17,7 +17,6 @@ A cutting-edge OCR (Optical Character Recognition) solution built with React, Ty
 - Automatic document deskewing and orientation correction
 - Noise reduction and image enhancement
 - Confidence-based text filtering
-- **Multi-language support** for text recognition in 13+ languages
 
 ### 📄 Advanced Export Options
 - Multiple export formats:
@@ -41,16 +40,6 @@ A cutting-edge OCR (Optical Character Recognition) solution built with React, Ty
 - Automatic retry mechanisms
 - Fallback strategies
 - Secure file handling
-
-### 🌐 Multi-Language Support
-- Support for 13+ languages including:
-  - English, French, Spanish, German
-  - Italian, Portuguese, Dutch
-  - Chinese, Japanese, Korean
-  - Russian, Arabic, Hindi
-- Language-specific text recognition optimization
-- Easy language selection via dropdown interface
-- Real-time language switching
 
 ## 📁 Project Structure
 
@@ -99,12 +88,12 @@ vision-script/
 ### Backend
 - Python Flask for API endpoints
 - Tesseract OCR for text extraction
-- EasyOCR for multi-language support
 - OpenCV for image processing
 - python-docx for Word document generation
 - openpyxl for Excel file handling
 
 ## 🔜 Upcoming Features
+- Multi-language support
 - PDF document processing
 - Cloud storage integration
 - Machine learning-based text correction

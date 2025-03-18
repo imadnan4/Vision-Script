@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, Upload, FileType } from 'lucide-react';
+import { Camera, Upload } from 'lucide-react';
 import RealTimeDetection from './components/RealTimeDetection';
 import ImageUpload from './components/ImageUpload';
 
@@ -57,11 +57,10 @@ function App() {
                 className="mb-12"
               >
                 <h1 className="text-6xl font-bold mb-8 bg-gradient-to-r from-white via-gray-300 to-white bg-clip-text text-transparent">
-                VisionScript
+                  VisionScript
                 </h1>
                 <p className="text-xl text-gray-400">
                   Extract text from images or use real-time camera detection
-                  "Intelligent Text Perception Suite"
                 </p>
               </motion.div>
 

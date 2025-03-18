@@ -1,8 +1,9 @@
-import React, { useCallback, useRef, useState, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import Webcam from 'react-webcam';
-import { motion } from 'framer-motion';
-import { ArrowLeft, Camera, Copy, Download, FileText, FileSpreadsheet, FileEdit, CreditCard } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, Camera, Download, Play, Pause, RefreshCw, Lock, Unlock, FileText, FileSpreadsheet, FileEdit, CreditCard, Eye, EyeOff, Check } from 'lucide-react';
 import axios from 'axios';
+import LanguageSelector from './LanguageSelector';
 
 interface Props {
   onBack: () => void;
@@ -16,162 +17,259 @@ interface Detection {
     width: number;
     height: number;
   };
+  status: string;
 }
 
 const RealTimeDetection: React.FC<Props> = ({ onBack }) => {
   const webcamRef = useRef<Webcam>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [detections, setDetections] = useState<Detection[]>([]);
-  const [capturedImage, setCapturedImage] = useState<string | null>(null);
-  const [capturedText, setCapturedText] = useState<string>('');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [showBoundaries, setShowBoundaries] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [captureInterval, setCaptureInterval] = useState<number | null>(null);
   const [selectedModel, setSelectedModel] = useState<'easyocr' | 'pytesseract'>('easyocr');
+  const [isBoxesLocked, setIsBoxesLocked] = useState(false);
+  const [showBoundaries, setShowBoundaries] = useState(true);
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('en');
+  const [capturedImageData, setCapturedImageData] = useState<string | null>(null);
+  const [lastDetections, setLastDetections] = useState<Detection[]>([]);
+  const [showCaptureConfirmation, setShowCaptureConfirmation] = useState(false);
+  const [showDownloadOptions, setShowDownloadOptions] = useState(false);
 
-  // Draw bounding boxes
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    const video = webcamRef.current?.video;
-    if (!canvas || !video) return;
+  const handleStartCapture = useCallback(() => {
+    if (isCapturing) return;
+    
+    setIsCapturing(true);
+    const interval = setInterval(() => {
+      captureFrame();
+    }, 1000); // Capture frame every second
+    
+    setCaptureInterval(interval);
+  }, [isCapturing]);
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    if (showBoundaries) {
-      detections.forEach(detection => {
-        const { x, y, width, height } = detection.bbox;
-        
-        ctx.strokeStyle = '#00FF00';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(x, y, width, height);
-
-        ctx.fillStyle = '#00FF00';
-        const textWidth = ctx.measureText(detection.text).width;
-        ctx.fillRect(x - 2, y - 20, textWidth + 4, 20);
-
-        ctx.fillStyle = '#000000';
-        ctx.font = '14px Arial';
-        ctx.fillText(detection.text, x, y - 5);
-      });
+  const handleStopCapture = useCallback(() => {
+    if (captureInterval) {
+      clearInterval(captureInterval);
+      setCaptureInterval(null);
     }
-  }, [detections, showBoundaries]);
+    setIsCapturing(false);
+  }, [captureInterval]);
 
-  const processFrame = useCallback(async () => {
-    if (isProcessing) return;
+  const captureFrame = useCallback(async () => {
+    if (!webcamRef.current || isLoading) return;
 
-    const imageSrc = webcamRef.current?.getScreenshot();
+    const imageSrc = webcamRef.current.getScreenshot();
     if (!imageSrc) return;
 
-    setIsProcessing(true);
+    setIsLoading(true);
+    
+    // Remove the data:image/jpeg;base64, prefix
+    const base64Data = imageSrc.split(',')[1];
+
     try {
       const response = await axios.post('http://localhost:5000/camera_feed', {
-        image: imageSrc.split(',')[1],
-        model: selectedModel
+        image: base64Data,
+        model: selectedModel,
+        language: selectedLanguage
       });
-      setDetections(response.data.detections || []);
+      
+      // Store the new detections
+      const newDetections = response.data.detections || [];
+      
+      // If boxes are locked, keep the last saved detections
+      if (!isBoxesLocked) {
+        setDetections(newDetections);
+        setLastDetections(newDetections);
+      }
     } catch (error) {
       console.error('Error processing frame:', error);
     }
-    setIsProcessing(false);
-  }, [isProcessing, selectedModel]);
+    
+    setIsLoading(false);
+  }, [isLoading, selectedModel, isBoxesLocked, selectedLanguage]);
 
-  const captureImage = async () => {
-    const imageSrc = webcamRef.current?.getScreenshot();
-    if (!imageSrc) return;
+  // Effect to handle when lock/unlock boxes are toggled
+  useEffect(() => {
+    if (!isBoxesLocked) {
+      // When unlocking, update with the most recent detections
+      setDetections(lastDetections);
+    }
+  }, [isBoxesLocked, lastDetections]);
 
-    setCapturedImage(imageSrc);
-    setIsProcessing(true);
+  // Process an image for text detection
+  const processImageForDetection = useCallback(async (imageData: string) => {
+    setIsLoading(true);
     
     try {
+      // Extract the base64 data
+      const base64Data = imageData.split(',')[1];
+      
       const response = await axios.post('http://localhost:5000/camera_feed', {
-        image: imageSrc.split(',')[1],
-        model: selectedModel
+        image: base64Data,
+        model: selectedModel,
+        language: selectedLanguage
       });
       
-      const newText = response.data.detections
-        .map((detection: Detection) => detection.text)
-        .join('\n');
-      
-      setCapturedText(newText);
+      // Update detections from the processed image
+      const newDetections = response.data.detections || [];
+      setDetections(newDetections);
+      setLastDetections(newDetections);
     } catch (error) {
-      console.error('Error processing captured image:', error);
+      console.error('Error processing image:', error);
+    } finally {
+      setIsLoading(false);
     }
+  }, [selectedModel, selectedLanguage]);
+
+  // Capture and process a still frame
+  const captureStillFrame = useCallback(() => {
+    if (!webcamRef.current) return;
     
-    setIsProcessing(false);
-  };
+    // Get the screenshot
+    const screenshot = webcamRef.current.getScreenshot();
+    if (!screenshot) return;
+    
+    // Store the image data
+    setCapturedImageData(screenshot);
+    
+    // Show capture confirmation
+    setShowCaptureConfirmation(true);
+    setTimeout(() => {
+      setShowCaptureConfirmation(false);
+    }, 2000);
+    
+    // Process the captured image
+    processImageForDetection(screenshot);
+    
+    return screenshot;
+  }, [processImageForDetection]);
 
-  const copyText = (text: string) => {
-    navigator.clipboard.writeText(text);
-  };
+  const toggleBoundaries = useCallback(() => {
+    setShowBoundaries(prev => !prev);
+  }, []);
 
-  const dataURLtoFile = (dataurl: string, filename: string) => {
-    const arr = dataurl.split(',');
-    const mime = arr[0].match(/:(.*?);/)![1];
-    const bstr = atob(arr[1]);
-    let n = bstr.length;
-    const u8arr = new Uint8Array(n);
-    while (n--) {
-      u8arr[n] = bstr.charCodeAt(n);
-    }
-    return new File([u8arr], filename, { type: mime });
-  };
+  const toggleDownloadOptions = useCallback(() => {
+    setShowDownloadOptions(prev => !prev);
+  }, []);
 
   const downloadFormat = async (format: 'txt' | 'docx' | 'excel' | 'idcard') => {
-    if (!capturedText || !capturedImage) return;
-
-    setIsProcessing(true);
+    if (detections.length === 0) return;
+    
+    setIsDownloading(true);
     try {
-      const formData = new FormData();
-      
       if (format === 'idcard') {
-        const imageFile = dataURLtoFile(capturedImage, 'capture.jpg');
-        formData.append('image', imageFile);
-      } else {
-        formData.append('format', format);
-        formData.append('text_data', capturedText);
-      }
-
-      const endpoint = format === 'idcard' 
-        ? 'http://localhost:5000/extract_id_data' 
-        : 'http://localhost:5000/download_format';
-
-      const response = await axios.post(endpoint, formData, {
-        responseType: 'blob',
-        headers: {
-          'Content-Type': format === 'idcard' ? 'multipart/form-data' : 'application/x-www-form-urlencoded'
+        // For ID card, we need to capture a still frame first if we don't have one
+        const imageData = capturedImageData || captureStillFrame();
+        if (!imageData) {
+          console.error('Failed to capture image for ID card processing');
+          setIsDownloading(false);
+          return;
         }
-      });
+        
+        // Convert base64 to blob
+        const base64Data = imageData.split(',')[1];
+        const byteCharacters = atob(base64Data);
+        const byteArrays = [];
+        
+        for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+          const slice = byteCharacters.slice(offset, offset + 512);
+          
+          const byteNumbers = new Array(slice.length);
+          for (let i = 0; i < slice.length; i++) {
+            byteNumbers[i] = slice.charCodeAt(i);
+          }
+          
+          const byteArray = new Uint8Array(byteNumbers);
+          byteArrays.push(byteArray);
+        }
+        
+        const blob = new Blob(byteArrays, {type: 'image/jpeg'});
+        const imageFile = new File([blob], 'capture.jpg', { type: 'image/jpeg' });
+        
+        const formData = new FormData();
+        formData.append('image', imageFile);
+        formData.append('language', selectedLanguage);
+        
+        const response = await axios.post(
+          'http://localhost:5000/extract_id_data',
+          formData,
+          {
+            responseType: 'blob',
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
+          }
+        );
+        
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', 'id_card_data.xlsx');
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      } else if (format === 'txt') {
+        // Direct download as text file
+        const textContent = detections.map(d => d.text).join('\n');
+        const blob = new Blob([textContent], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'detected_text.txt';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } else {
+        // Server-side format conversion for docx and excel
+        const textContent = detections.map(d => d.text).join('\n');
+        const formData = new FormData();
+        formData.append('format', format);
+        formData.append('text_data', textContent);
+        
+        const response = await axios.post(
+          'http://localhost:5000/download_format',
+          formData,
+          {
+            responseType: 'blob',
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
+          }
+        );
 
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      const extension = format === 'idcard' ? 'xlsx' : format;
-      const filename = format === 'idcard' ? 'id_card_data' : 'captured_text';
-      link.setAttribute('download', `${filename}.${extension}`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        const extension = format === 'excel' ? 'xlsx' : format;
+        const filename = 'detected_text';
+        link.setAttribute('download', `${filename}.${extension}`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      }
     } catch (error) {
       console.error('Error downloading file:', error);
     }
-    setIsProcessing(false);
+    
+    setIsDownloading(false);
   };
 
   const downloadFormats = [
-    { format: 'txt', icon: FileText, label: 'Plain Text' },
-    { format: 'docx', icon: FileEdit, label: 'Word Document' },
-    { format: 'excel', icon: FileSpreadsheet, label: 'Excel Spreadsheet' },
-    { format: 'idcard', icon: CreditCard, label: 'ID Card Data' }
+    { format: 'txt', icon: FileText, label: 'Plain Text', description: 'Simple text file (.txt)' },
+    { format: 'docx', icon: FileEdit, label: 'Word Document', description: 'Microsoft Word format (.docx)' },
+    { format: 'excel', icon: FileSpreadsheet, label: 'Excel Spreadsheet', description: 'Excel spreadsheet (.xlsx)' },
+    { format: 'idcard', icon: CreditCard, label: 'ID Card Data', description: 'Extract ID card information (.xlsx)' }
   ];
 
+  // Reset on component unmount
   useEffect(() => {
-    const interval = setInterval(processFrame, 2000);
-    return () => clearInterval(interval);
-  }, [processFrame]);
+    return () => {
+      if (captureInterval) {
+        clearInterval(captureInterval);
+      }
+    };
+  }, [captureInterval]);
 
   return (
     <div className="min-h-screen p-4 bg-black">
@@ -186,193 +284,289 @@ const RealTimeDetection: React.FC<Props> = ({ onBack }) => {
           Back
         </motion.button>
 
-        <motion.div 
-          className="flex items-center gap-3 bg-white/5 p-2 rounded-lg backdrop-blur-sm"
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-        >
-          <span className="text-sm text-white/80">EasyOCR</span>
-          <motion.div
-            className={`relative w-12 h-6 rounded-full p-1 cursor-pointer ${
-              selectedModel === 'pytesseract' ? 'bg-blue-500' : 'bg-gray-600'
-            }`}
-            onClick={() => setSelectedModel(prev => 
-              prev === 'easyocr' ? 'pytesseract' : 'easyocr'
-            )}
+        <div className="flex items-center gap-4">
+          <LanguageSelector 
+            selectedLanguage={selectedLanguage}
+            onLanguageChange={setSelectedLanguage}
+          />
+          
+          <motion.div 
+            className="flex items-center gap-3 bg-white/5 p-2 rounded-lg backdrop-blur-sm"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
           >
+            <span className="text-sm text-white/80">EasyOCR</span>
             <motion.div
-              className="absolute w-4 h-4 bg-white rounded-full shadow-md"
-              layout
-              transition={{ type: 'spring', stiffness: 700, damping: 30 }}
-              style={{ left: selectedModel === 'easyocr' ? '4px' : '28px' }}
-            />
+              className={`relative w-12 h-6 rounded-full p-1 cursor-pointer ${
+                selectedModel === 'pytesseract' ? 'bg-blue-500' : 'bg-gray-600'
+              }`}
+              onClick={() => setSelectedModel(prev => 
+                prev === 'easyocr' ? 'pytesseract' : 'easyocr'
+              )}
+            >
+              <motion.div
+                className="absolute w-4 h-4 bg-white rounded-full shadow-md"
+                layout
+                transition={{ type: 'spring', stiffness: 700, damping: 30 }}
+                style={{ left: selectedModel === 'easyocr' ? '4px' : '28px' }}
+              />
+            </motion.div>
+            <span className="text-sm text-white/80">Pytesseract</span>
           </motion.div>
-          <span className="text-sm text-white/80">Pytesseract</span>
-        </motion.div>
+        </div>
       </div>
 
       <div className="max-w-4xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative rounded-2xl overflow-hidden shadow-2xl border border-white/10"
+          className="bg-gradient-to-br from-zinc-900/80 to-black/80 backdrop-blur-sm rounded-xl border border-white/10 p-8 text-white"
         >
-          <div className="relative">
-            <Webcam
-              ref={webcamRef}
-              screenshotFormat="image/jpeg"
-              className="w-full"
-            />
-            <canvas
-              ref={canvasRef}
-              className="absolute top-0 left-0 w-full h-full pointer-events-none"
-            />
-          </div>
-
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="absolute bottom-0 left-0 right-0 bg-black/80 backdrop-blur-sm p-6"
-          >
-            <div className="flex items-center gap-3 text-white">
-              <Camera className="w-6 h-6" />
-              <span className="font-medium">Real-time detection active</span>
-              <div className="flex ml-auto gap-3">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
-                  onClick={captureImage}
-                >
-                  <Download className="w-5 h-5" />
-                </motion.button>
-                {isProcessing && (
-                  <motion.div 
-                    className="w-2 h-2 bg-white rounded-full"
-                    animate={{ scale: [1, 1.5, 1] }}
-                    transition={{ duration: 1, repeat: Infinity }}
-                  />
-                )}
-              </div>
-            </div>
-          </motion.div>
-        </motion.div>
-
-        {/* Detections List */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="mt-8 p-8 bg-black rounded-xl border border-white/10 text-white"
-        >
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-2xl font-semibold">Detected Text:</h3>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
-              onClick={() => copyText(detections.map(d => d.text).join('\n'))}
-              disabled={detections.length === 0}
-            >
-              <Copy className="w-5 h-5" />
-            </motion.button>
-          </div>
-          
-  {detections.length > 0 ? (
-    <ul className="space-y-3">
-      {detections.map((detection, index) => (
-        <motion.li
-          key={index}
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: index * 0.1 }}
-          className="bg-white/5 p-4 rounded-lg hover:bg-white/10 transition-colors"
-        >
-          {selectedModel === 'pytesseract' ? (
-            <pre>{detection.text}</pre>
-          ) : (
-            detection.text
-          )}
-        </motion.li>
-      ))}
-    </ul>
-  ) : (
-    <p className="text-gray-400">No text detected yet...</p>
-  )}
-        </motion.div>
-
-        {/* Captured Content */}
-        {capturedImage && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="mt-8 p-8 bg-black rounded-xl border border-white/10 text-white"
+            transition={{ delay: 0.2 }}
+            className="text-center mb-8"
           >
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-semibold">Captured Content:</h3>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
-                onClick={() => copyText(capturedText)}
-                disabled={!capturedText}
-              >
-                <Copy className="w-5 h-5" />
-              </motion.button>
-            </div>
+            <h2 className="text-3xl font-bold mb-4">Real-Time Text Detection</h2>
+            <p className="text-gray-400">Point your camera at text to detect it in real-time</p>
+          </motion.div>
 
-            <div className="space-y-4">
-              <img 
-                src={capturedImage} 
-                alt="Captured" 
-                className="w-full rounded-lg"
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="mb-8"
+          >
+            <div className="relative overflow-hidden rounded-xl aspect-video bg-black">
+              <Webcam
+                audio={false}
+                ref={webcamRef}
+                screenshotFormat="image/jpeg"
+                className="w-full h-full object-cover"
               />
-              <div className="bg-white/5 p-4 rounded-lg">
-                {capturedText || "Processing captured image..."}
-              </div>
-
-              {capturedText && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-white/5 p-6 rounded-lg mt-4"
-                >
-                  <h4 className="text-lg font-semibold mb-4 text-center">Export Options</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    {downloadFormats.map(({ format, icon: Icon, label }) => (
-                      <motion.button
-                        key={format}
-                        whileHover={{ 
-                          scale: 1.05,
-                          backgroundColor: 'rgba(255,255,255,0.15)'
-                        }}
-                        whileTap={{ scale: 0.95 }}
-                        className="relative overflow-hidden bg-white/10 p-6 rounded-lg flex flex-col items-center gap-3 hover:bg-white/20 transition-all duration-300 group"
-                        onClick={() => downloadFormat(format as any)}
-                        disabled={isProcessing}
-                      >
-                        <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/5 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
-                        <Icon className="w-8 h-8 text-white/80 group-hover:text-white transition-colors duration-300" />
-                        <span className="font-medium text-sm text-center">{label}</span>
-                        {isProcessing && (
-                          <motion.div 
-                            className="absolute inset-0 bg-black/50 flex items-center justify-center"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                          >
-                            <div className="w-2 h-2 bg-white rounded-full animate-ping" />
-                          </motion.div>
-                        )}
-                      </motion.button>
-                    ))}
-                  </div>
-                </motion.div>
+              
+              {/* Capture preview overlay */}
+              {capturedImageData && (
+                <div className="absolute top-4 right-4 w-32 h-24 rounded overflow-hidden border-2 border-white shadow-lg">
+                  <img 
+                    src={capturedImageData} 
+                    alt="Captured frame" 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
               )}
+              
+              <AnimatePresence>
+                {isLoading && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute inset-0 flex items-center justify-center bg-black/30"
+                  >
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                    >
+                      <RefreshCw className="w-10 h-10 text-white" />
+                    </motion.div>
+                  </motion.div>
+                )}
+                
+                {showCaptureConfirmation && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-green-500 text-white py-2 px-4 rounded-full flex items-center gap-2 shadow-lg"
+                  >
+                    <Check className="w-5 h-5" />
+                    <span>Frame captured!</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              
+              {detections.map((detection, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className={`absolute ${showBoundaries ? 'border-2 border-green-500' : ''} rounded`}
+                  style={{
+                    left: `${detection.bbox.x}px`,
+                    top: `${detection.bbox.y}px`,
+                    width: `${detection.bbox.width}px`,
+                    height: `${detection.bbox.height}px`,
+                  }}
+                >
+                  {showBoundaries && (
+                    <motion.div 
+                      className="absolute -top-7 left-0 px-2 py-1 text-xs font-mono bg-green-500 text-black rounded"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                    >
+                      {detection.text}
+                    </motion.div>
+                  )}
+                </motion.div>
+              ))}
             </div>
           </motion.div>
-        )}
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="flex justify-center gap-4 flex-wrap"
+          >
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-colors ${
+                isCapturing
+                  ? 'bg-red-500 hover:bg-red-600 text-white'
+                  : 'bg-white hover:bg-gray-100 text-black'
+              }`}
+              onClick={isCapturing ? handleStopCapture : handleStartCapture}
+            >
+              {isCapturing ? (
+                <>
+                  <Pause className="w-5 h-5" />
+                  Stop Capture
+                </>
+              ) : (
+                <>
+                  <Play className="w-5 h-5" />
+                  Start Capture
+                </>
+              )}
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-colors ${
+                isBoxesLocked
+                  ? 'bg-blue-500 hover:bg-blue-600 text-white'
+                  : 'bg-white/10 hover:bg-white/20 text-white'
+              }`}
+              onClick={() => setIsBoxesLocked(!isBoxesLocked)}
+            >
+              {isBoxesLocked ? (
+                <>
+                  <Lock className="w-5 h-5" />
+                  Locked
+                </>
+              ) : (
+                <>
+                  <Unlock className="w-5 h-5" />
+                  Lock Boxes
+                </>
+              )}
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-colors ${
+                showBoundaries
+                  ? 'bg-green-500 hover:bg-green-600 text-white'
+                  : 'bg-white/10 hover:bg-white/20 text-white'
+              }`}
+              onClick={toggleBoundaries}
+            >
+              {showBoundaries ? (
+                <>
+                  <Eye className="w-5 h-5" />
+                  Boundaries On
+                </>
+              ) : (
+                <>
+                  <EyeOff className="w-5 h-5" />
+                  Boundaries Off
+                </>
+              )}
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+              onClick={captureStillFrame}
+            >
+              <Camera className="w-5 h-5" />
+              Capture Frame
+            </motion.button>
+          </motion.div>
+
+          {detections.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="mt-8"
+            >
+              <h3 className="text-xl font-semibold mb-4">Detected Text:</h3>
+              <div className="bg-zinc-800/50 border border-white/10 rounded-lg p-4 max-h-60 overflow-y-auto mb-8">
+                <pre className="text-gray-300 font-mono text-sm whitespace-pre-wrap">
+                  {detections.map(d => d.text).join('\n')}
+                </pre>
+              </div>
+              
+              <div className="flex flex-col items-center">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold transition-colors mb-6"
+                  onClick={toggleDownloadOptions}
+                >
+                  <Download className="w-5 h-5" />
+                  {showDownloadOptions ? "Hide Download Options" : "Download Detected Text"}
+                </motion.button>
+
+                <AnimatePresence>
+                  {showDownloadOptions && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="w-full bg-white/5 rounded-lg p-6 overflow-hidden"
+                    >
+                      <h4 className="text-lg font-semibold mb-4 text-center">Select Download Format</h4>
+                      <div className="flex flex-col gap-3">
+                        {downloadFormats.map(({ format, icon: Icon, label, description }) => (
+                          <motion.button
+                            key={format}
+                            whileHover={{ 
+                              backgroundColor: 'rgba(255,255,255,0.15)'
+                            }}
+                            whileTap={{ scale: 0.98 }}
+                            className="relative overflow-hidden bg-white/10 p-4 rounded-lg flex items-center gap-4 hover:bg-white/20 transition-all duration-300 text-left"
+                            onClick={() => downloadFormat(format as 'txt' | 'docx' | 'excel' | 'idcard')}
+                            disabled={isDownloading}
+                          >
+                            <div className="flex-shrink-0 w-12 h-12 bg-zinc-800 rounded-full flex items-center justify-center">
+                              <Icon className="w-6 h-6 text-white" />
+                            </div>
+                            <div className="flex-grow">
+                              <h5 className="font-semibold text-white">{label}</h5>
+                              <p className="text-sm text-gray-400">{description}</p>
+                            </div>
+                            {isDownloading && (
+                              <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                            )}
+                          </motion.button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </motion.div>
+          )}
+        </motion.div>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Upload, FileText, FileSpreadsheet, FileEdit, CreditCard } from 'lucide-react';
 import axios from 'axios';
+import LanguageSelector from './LanguageSelector';
 
 interface Props {
   onBack: () => void;
@@ -15,6 +16,7 @@ const ImageUpload: React.FC<Props> = ({ onBack }) => {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [selectedModel, setSelectedModel] = useState<'easyocr' | 'pytesseract'>('easyocr');
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('en');
 
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -51,6 +53,7 @@ const ImageUpload: React.FC<Props> = ({ onBack }) => {
     const formData = new FormData();
     formData.append('image', selectedImage);
     formData.append('model', selectedModel);
+    formData.append('language', selectedLanguage);
 
     try {
       const response = await axios.post('http://localhost:5000/upload_image', formData);
@@ -71,6 +74,7 @@ const ImageUpload: React.FC<Props> = ({ onBack }) => {
       if (format === 'idcard') {
         if (selectedImage) {
           formData.append('image', selectedImage);
+          formData.append('language', selectedLanguage);
         }
       } else {
         formData.append('format', format);
@@ -95,9 +99,7 @@ const ImageUpload: React.FC<Props> = ({ onBack }) => {
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      const extension = format === 'excel' ? 'xlsx' : 
-                       format === 'idcard' ? 'xlsx' : 
-                       format;
+      const extension = format === 'excel' ? 'xlsx' : format === 'idcard' ? 'xlsx' : format;
       const filename = format === 'idcard' ? 'id_card_data' : 'extracted_text';
       link.setAttribute('download', `${filename}.${extension}`);
       document.body.appendChild(link);
@@ -117,7 +119,7 @@ const ImageUpload: React.FC<Props> = ({ onBack }) => {
   ];
 
   return (
-    <div className="min-h-screen p-4">
+    <div className="min-h-screen p-4 bg-black">
       <div className="flex justify-between items-center mb-4">
         <motion.button
           whileHover={{ scale: 1.1 }}
@@ -129,30 +131,37 @@ const ImageUpload: React.FC<Props> = ({ onBack }) => {
           Back
         </motion.button>
 
-        <motion.div 
-          className="flex items-center gap-3 bg-white/5 p-2 rounded-lg backdrop-blur-sm"
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <span className="text-sm text-white/80">EasyOCR</span>
-          <motion.div
-            className={`relative w-12 h-6 rounded-full p-1 cursor-pointer ${
-              selectedModel === 'pytesseract' ? 'bg-blue-500' : 'bg-gray-600'
-            }`}
-            onClick={() => setSelectedModel(prev => 
-              prev === 'easyocr' ? 'pytesseract' : 'easyocr'
-            )}
+        <div className="flex items-center gap-4">
+          <LanguageSelector 
+            selectedLanguage={selectedLanguage}
+            onLanguageChange={setSelectedLanguage}
+          />
+
+          <motion.div 
+            className="flex items-center gap-3 bg-white/5 p-2 rounded-lg backdrop-blur-sm"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
           >
+            <span className="text-sm text-white/80">EasyOCR</span>
             <motion.div
-              className="absolute w-4 h-4 bg-white rounded-full shadow-md"
-              layout
-              transition={{ type: 'spring', stiffness: 700, damping: 30 }}
-              style={{ left: selectedModel === 'easyocr' ? '4px' : '28px' }}
-            />
+              className={`relative w-12 h-6 rounded-full p-1 cursor-pointer ${
+                selectedModel === 'pytesseract' ? 'bg-blue-500' : 'bg-gray-600'
+              }`}
+              onClick={() => setSelectedModel(prev => 
+                prev === 'easyocr' ? 'pytesseract' : 'easyocr'
+              )}
+            >
+              <motion.div
+                className="absolute w-4 h-4 bg-white rounded-full shadow-md"
+                layout
+                transition={{ type: 'spring', stiffness: 700, damping: 30 }}
+                style={{ left: selectedModel === 'easyocr' ? '4px' : '28px' }}
+              />
+            </motion.div>
+            <span className="text-sm text-white/80">Pytesseract</span>
           </motion.div>
-          <span className="text-sm text-white/80">Pytesseract</span>
-        </motion.div>
+        </div>
       </div>
 
       <div className="max-w-4xl mx-auto">
