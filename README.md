@@ -2,6 +2,12 @@
 
 A cutting-edge OCR (Optical Character Recognition) solution built with React, TypeScript, and Python, featuring a modern tech stack and intelligent document processing capabilities. Transform your physical documents into digital format with ease and precision.
 
+## 🚀 Recent Updates
+
+- **Multilanguage Support** - Added support for 13+ languages with seamless language switching
+- **UI Improvements** - Enhanced user interface for better user experience
+- **Backend Optimization** - Improved text detection accuracy and processing speed
+
 ## 🌟 Key Features
 
 ### 📸 Smart Document Capture
@@ -58,6 +64,9 @@ A cutting-edge OCR (Optical Character Recognition) solution built with React, Ty
 vision-script/
 ├── frontend/         # React + TypeScript frontend
 │   ├── components/   # Reusable UI components
+│   │   ├── ImageUpload.tsx       # Image upload component
+│   │   ├── RealTimeDetection.tsx # Camera-based detection
+│   │   └── LanguageSelector.tsx  # Language selection component
 │   └── styles/       # Tailwind CSS styling
 ├── backend/         # Python Flask backend
 │   ├── ocr/         # OCR processing logic
@@ -86,6 +95,12 @@ vision-script/
    ```bash
    npm run dev
    ```
+
+4. Using the multilanguage feature:
+   - Look for the globe icon in the interface
+   - Click to open the language dropdown
+   - Select your preferred language for OCR processing
+   - The system will automatically optimize text recognition for the selected language
 
 ## 🛠️ Technical Stack
 
