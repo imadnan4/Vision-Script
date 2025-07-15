@@ -1,12 +1,14 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import Webcam from 'react-webcam';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Camera, Download, Play, Pause, RefreshCw, Lock, Unlock, FileText, FileSpreadsheet, FileEdit, CreditCard, Eye, EyeOff, Check } from 'lucide-react';
+import { ArrowLeft, Camera, Download, Play, Pause, RefreshCw, Lock, Unlock, FileText, FileSpreadsheet, FileEdit, CreditCard, Eye, EyeOff, Check, Zap } from 'lucide-react';
 import axios from 'axios';
 import LanguageSelector from './LanguageSelector';
+import ThemeToggle from './ThemeToggle';
 
 interface Props {
   onBack: () => void;
+  onSummarize?: (text: string) => void;
 }
 
 interface Detection {
@@ -20,7 +22,7 @@ interface Detection {
   status: string;
 }
 
-const RealTimeDetection: React.FC<Props> = ({ onBack }) => {
+const RealTimeDetection: React.FC<Props> = ({ onBack, onSummarize }) => {
   const webcamRef = useRef<Webcam>(null);
   const [detections, setDetections] = useState<Detection[]>([]);
   const [isCapturing, setIsCapturing] = useState(false);
@@ -272,12 +274,12 @@ const RealTimeDetection: React.FC<Props> = ({ onBack }) => {
   }, [captureInterval]);
 
   return (
-    <div className="min-h-screen p-4 bg-black">
+    <div className="min-h-screen p-4 transition-theme duration-300 bg-gray-50 dark:bg-black">
       <div className="flex justify-between items-center mb-4">
         <motion.button
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
-          className="text-white flex items-center gap-2 bg-white/5 hover:bg-white/10 px-6 py-3 rounded-lg backdrop-blur-sm transition-colors"
+          className="text-gray-900 dark:text-white flex items-center gap-2 bg-white/80 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 px-6 py-3 rounded-lg backdrop-blur-sm transition-colors border border-gray-200 dark:border-white/10"
           onClick={onBack}
         >
           <ArrowLeft className="w-5 h-5" />
@@ -285,23 +287,25 @@ const RealTimeDetection: React.FC<Props> = ({ onBack }) => {
         </motion.button>
 
         <div className="flex items-center gap-4">
-          <LanguageSelector 
+          <ThemeToggle variant="icon" size="md" />
+
+          <LanguageSelector
             selectedLanguage={selectedLanguage}
             onLanguageChange={setSelectedLanguage}
           />
-          
-          <motion.div 
-            className="flex items-center gap-3 bg-white/5 p-2 rounded-lg backdrop-blur-sm"
+
+          <motion.div
+            className="flex items-center gap-3 bg-white/80 dark:bg-white/5 p-2 rounded-lg backdrop-blur-sm border border-gray-200 dark:border-white/10"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <span className="text-sm text-white/80">EasyOCR</span>
+            <span className="text-sm text-gray-700 dark:text-white/80">EasyOCR</span>
             <motion.div
-              className={`relative w-12 h-6 rounded-full p-1 cursor-pointer ${
-                selectedModel === 'pytesseract' ? 'bg-blue-500' : 'bg-gray-600'
+              className={`relative w-12 h-6 rounded-full p-1 cursor-pointer transition-colors ${
+                selectedModel === 'pytesseract' ? 'bg-blue-500' : 'bg-gray-400 dark:bg-gray-600'
               }`}
-              onClick={() => setSelectedModel(prev => 
+              onClick={() => setSelectedModel(prev =>
                 prev === 'easyocr' ? 'pytesseract' : 'easyocr'
               )}
             >
@@ -312,7 +316,7 @@ const RealTimeDetection: React.FC<Props> = ({ onBack }) => {
                 style={{ left: selectedModel === 'easyocr' ? '4px' : '28px' }}
               />
             </motion.div>
-            <span className="text-sm text-white/80">Pytesseract</span>
+            <span className="text-sm text-gray-700 dark:text-white/80">Pytesseract</span>
           </motion.div>
         </div>
       </div>
@@ -321,7 +325,7 @@ const RealTimeDetection: React.FC<Props> = ({ onBack }) => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-br from-zinc-900/80 to-black/80 backdrop-blur-sm rounded-xl border border-white/10 p-8 text-white"
+          className="bg-gradient-to-br from-white to-gray-50 dark:from-zinc-900/80 dark:to-black/80 backdrop-blur-sm rounded-xl border border-gray-200 dark:border-white/10 p-8 text-gray-900 dark:text-white shadow-lg"
         >
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -329,8 +333,8 @@ const RealTimeDetection: React.FC<Props> = ({ onBack }) => {
             transition={{ delay: 0.2 }}
             className="text-center mb-8"
           >
-            <h2 className="text-3xl font-bold mb-4">Real-Time Text Detection</h2>
-            <p className="text-gray-400">Point your camera at text to detect it in real-time</p>
+            <h2 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white">Real-Time Text Detection</h2>
+            <p className="text-gray-600 dark:text-gray-400">Point your camera at text to detect it in real-time</p>
           </motion.div>
 
           <motion.div
@@ -364,13 +368,14 @@ const RealTimeDetection: React.FC<Props> = ({ onBack }) => {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="absolute inset-0 flex items-center justify-center bg-black/30"
+                    className="absolute inset-0 flex items-center justify-center bg-black/30 dark:bg-black/50"
                   >
                     <motion.div
                       animate={{ rotate: 360 }}
                       transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                      className="p-4 bg-white/90 dark:bg-white/10 backdrop-blur-sm rounded-lg border border-gray-200 dark:border-white/20"
                     >
-                      <RefreshCw className="w-10 h-10 text-white" />
+                      <RefreshCw className="w-10 h-10 text-blue-600 dark:text-white" />
                     </motion.div>
                   </motion.div>
                 )}
@@ -380,7 +385,7 @@ const RealTimeDetection: React.FC<Props> = ({ onBack }) => {
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.8 }}
-                    className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-green-500 text-white py-2 px-4 rounded-full flex items-center gap-2 shadow-lg"
+                    className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-green-500 dark:bg-green-600 text-white py-2 px-4 rounded-full flex items-center gap-2 shadow-lg"
                   >
                     <Check className="w-5 h-5" />
                     <span>Frame captured!</span>
@@ -427,7 +432,7 @@ const RealTimeDetection: React.FC<Props> = ({ onBack }) => {
               className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-colors ${
                 isCapturing
                   ? 'bg-red-500 hover:bg-red-600 text-white'
-                  : 'bg-white hover:bg-gray-100 text-black'
+                  : 'bg-white hover:bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 text-black dark:text-white'
               }`}
               onClick={isCapturing ? handleStopCapture : handleStartCapture}
             >
@@ -450,7 +455,7 @@ const RealTimeDetection: React.FC<Props> = ({ onBack }) => {
               className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-colors ${
                 isBoxesLocked
                   ? 'bg-blue-500 hover:bg-blue-600 text-white'
-                  : 'bg-white/10 hover:bg-white/20 text-white'
+                  : 'bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-900 dark:text-white'
               }`}
               onClick={() => setIsBoxesLocked(!isBoxesLocked)}
             >
@@ -473,7 +478,7 @@ const RealTimeDetection: React.FC<Props> = ({ onBack }) => {
               className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-colors ${
                 showBoundaries
                   ? 'bg-green-500 hover:bg-green-600 text-white'
-                  : 'bg-white/10 hover:bg-white/20 text-white'
+                  : 'bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-900 dark:text-white'
               }`}
               onClick={toggleBoundaries}
             >
@@ -493,7 +498,7 @@ const RealTimeDetection: React.FC<Props> = ({ onBack }) => {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+              className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
               onClick={captureStillFrame}
             >
               <Camera className="w-5 h-5" />
@@ -508,18 +513,37 @@ const RealTimeDetection: React.FC<Props> = ({ onBack }) => {
               transition={{ delay: 0.5 }}
               className="mt-8"
             >
-              <h3 className="text-xl font-semibold mb-4">Detected Text:</h3>
-              <div className="bg-zinc-800/50 border border-white/10 rounded-lg p-4 max-h-60 overflow-y-auto mb-8">
-                <pre className="text-gray-300 font-mono text-sm whitespace-pre-wrap">
+              <h3 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Detected Text:</h3>
+              <div className="bg-gray-100 dark:bg-zinc-800/50 border border-gray-300 dark:border-white/10 rounded-lg p-4 max-h-60 overflow-y-auto mb-6">
+                <pre className="text-gray-700 dark:text-gray-300 font-mono text-sm whitespace-pre-wrap">
                   {detections.map(d => d.text).join('\n')}
                 </pre>
               </div>
+
+              {/* Summarize Button */}
+              {onSummarize && detections.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex justify-center mb-6"
+                >
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700 dark:from-purple-600 dark:to-blue-700 dark:hover:from-purple-700 dark:hover:to-blue-800 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-300"
+                    onClick={() => onSummarize(detections.map(d => d.text).join('\n'))}
+                  >
+                    <Zap className="w-5 h-5" />
+                    Summarize Detected Text
+                  </motion.button>
+                </motion.div>
+              )}
               
               <div className="flex flex-col items-center">
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold transition-colors mb-6"
+                  className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-semibold transition-colors mb-6"
                   onClick={toggleDownloadOptions}
                 >
                   <Download className="w-5 h-5" />
@@ -543,19 +567,19 @@ const RealTimeDetection: React.FC<Props> = ({ onBack }) => {
                               backgroundColor: 'rgba(255,255,255,0.15)'
                             }}
                             whileTap={{ scale: 0.98 }}
-                            className="relative overflow-hidden bg-white/10 p-4 rounded-lg flex items-center gap-4 hover:bg-white/20 transition-all duration-300 text-left"
+                            className="relative overflow-hidden bg-white/80 dark:bg-white/10 p-4 rounded-lg flex items-center gap-4 hover:bg-white dark:hover:bg-white/20 transition-all duration-300 text-left border border-gray-200 dark:border-white/10"
                             onClick={() => downloadFormat(format as 'txt' | 'docx' | 'excel' | 'idcard')}
                             disabled={isDownloading}
                           >
-                            <div className="flex-shrink-0 w-12 h-12 bg-zinc-800 rounded-full flex items-center justify-center">
-                              <Icon className="w-6 h-6 text-white" />
+                            <div className="flex-shrink-0 w-12 h-12 bg-gray-100 dark:bg-zinc-800 rounded-full flex items-center justify-center">
+                              <Icon className="w-6 h-6 text-gray-600 dark:text-white" />
                             </div>
                             <div className="flex-grow">
-                              <h5 className="font-semibold text-white">{label}</h5>
-                              <p className="text-sm text-gray-400">{description}</p>
+                              <h5 className="font-semibold text-gray-900 dark:text-white">{label}</h5>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">{description}</p>
                             </div>
                             {isDownloading && (
-                              <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                              <div className="w-5 h-5 border-2 border-blue-600 dark:border-blue-500 border-t-transparent rounded-full animate-spin" />
                             )}
                           </motion.button>
                         ))}
