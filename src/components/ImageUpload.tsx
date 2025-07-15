@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Upload, FileText, FileSpreadsheet, FileEdit, CreditCard } from 'lucide-react';
+import { ArrowLeft, Upload, FileText, FileSpreadsheet, FileEdit, CreditCard, Zap } from 'lucide-react';
 import axios from 'axios';
 import LanguageSelector from './LanguageSelector';
+import ThemeToggle from './ThemeToggle';
 
 interface Props {
   onBack: () => void;
+  onSummarize?: (text: string) => void;
 }
 
-const ImageUpload: React.FC<Props> = ({ onBack }) => {
+const ImageUpload: React.FC<Props> = ({ onBack, onSummarize }) => {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [recognizedText, setRecognizedText] = useState<string>('');
@@ -119,12 +121,12 @@ const ImageUpload: React.FC<Props> = ({ onBack }) => {
   ];
 
   return (
-    <div className="min-h-screen p-4 bg-black">
+    <div className="min-h-screen p-4 transition-theme duration-300 bg-gray-50 dark:bg-black">
       <div className="flex justify-between items-center mb-4">
         <motion.button
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
-          className="text-white flex items-center gap-2 bg-white/5 hover:bg-white/10 px-6 py-3 rounded-lg backdrop-blur-sm transition-colors"
+          className="text-gray-900 dark:text-white flex items-center gap-2 bg-white/80 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 px-6 py-3 rounded-lg backdrop-blur-sm transition-colors border border-gray-200 dark:border-white/10"
           onClick={onBack}
         >
           <ArrowLeft className="w-5 h-5" />
@@ -132,23 +134,25 @@ const ImageUpload: React.FC<Props> = ({ onBack }) => {
         </motion.button>
 
         <div className="flex items-center gap-4">
-          <LanguageSelector 
+          <ThemeToggle variant="icon" size="md" />
+
+          <LanguageSelector
             selectedLanguage={selectedLanguage}
             onLanguageChange={setSelectedLanguage}
           />
 
-          <motion.div 
-            className="flex items-center gap-3 bg-white/5 p-2 rounded-lg backdrop-blur-sm"
+          <motion.div
+            className="flex items-center gap-3 bg-white/80 dark:bg-white/5 p-2 rounded-lg backdrop-blur-sm border border-gray-200 dark:border-white/10"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <span className="text-sm text-white/80">EasyOCR</span>
+            <span className="text-sm text-gray-700 dark:text-white/80">EasyOCR</span>
             <motion.div
-              className={`relative w-12 h-6 rounded-full p-1 cursor-pointer ${
-                selectedModel === 'pytesseract' ? 'bg-blue-500' : 'bg-gray-600'
+              className={`relative w-12 h-6 rounded-full p-1 cursor-pointer transition-colors ${
+                selectedModel === 'pytesseract' ? 'bg-blue-500' : 'bg-gray-400 dark:bg-gray-600'
               }`}
-              onClick={() => setSelectedModel(prev => 
+              onClick={() => setSelectedModel(prev =>
                 prev === 'easyocr' ? 'pytesseract' : 'easyocr'
               )}
             >
@@ -159,7 +163,7 @@ const ImageUpload: React.FC<Props> = ({ onBack }) => {
                 style={{ left: selectedModel === 'easyocr' ? '4px' : '28px' }}
               />
             </motion.div>
-            <span className="text-sm text-white/80">Pytesseract</span>
+            <span className="text-sm text-gray-700 dark:text-white/80">Pytesseract</span>
           </motion.div>
         </div>
       </div>
@@ -168,7 +172,7 @@ const ImageUpload: React.FC<Props> = ({ onBack }) => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-br from-zinc-900/80 to-black/80 backdrop-blur-sm rounded-xl border border-white/10 p-8 text-white"
+          className="bg-gradient-to-br from-white to-gray-50 dark:from-zinc-900/80 dark:to-black/80 backdrop-blur-sm rounded-xl border border-gray-200 dark:border-white/10 p-8 text-gray-900 dark:text-white shadow-lg"
         >
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -176,8 +180,8 @@ const ImageUpload: React.FC<Props> = ({ onBack }) => {
             transition={{ delay: 0.2 }}
             className="text-center mb-8"
           >
-            <h2 className="text-3xl font-bold mb-4">Upload Image</h2>
-            <p className="text-gray-400">Upload an image to extract text</p>
+            <h2 className="text-3xl font-bold mb-4 text-gray-900 dark:text-white">Upload Image</h2>
+            <p className="text-gray-600 dark:text-gray-400">Upload an image to extract text</p>
           </motion.div>
 
           <motion.div
@@ -188,8 +192,10 @@ const ImageUpload: React.FC<Props> = ({ onBack }) => {
           >
             <label
               className={`block w-full aspect-video rounded-xl border-2 border-dashed ${
-                isDragging ? 'border-white scale-105' : 'border-white/30'
-              } hover:border-white/50 transition-all duration-300 cursor-pointer overflow-hidden`}
+                isDragging
+                  ? 'border-blue-500 dark:border-white scale-105'
+                  : 'border-gray-300 dark:border-white/30'
+              } hover:border-blue-400 dark:hover:border-white/50 transition-all duration-300 cursor-pointer overflow-hidden bg-gray-50 dark:bg-transparent`}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
@@ -215,8 +221,8 @@ const ImageUpload: React.FC<Props> = ({ onBack }) => {
                     animate={{ opacity: 1 }}
                     className="text-center"
                   >
-                    <Upload className="w-16 h-16 mb-4 mx-auto text-white/60" />
-                    <p className="text-white/60">Drag and drop or click to upload</p>
+                    <Upload className="w-16 h-16 mb-4 mx-auto text-gray-400 dark:text-white/60" />
+                    <p className="text-gray-500 dark:text-white/60">Drag and drop or click to upload</p>
                   </motion.div>
                 )}
               </div>
@@ -258,13 +264,32 @@ const ImageUpload: React.FC<Props> = ({ onBack }) => {
               className="mt-8"
             >
               <h3 className="text-xl font-semibold mb-4">Extracted Text:</h3>
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="bg-white/5 p-6 rounded-lg mb-8 font-mono text-gray-300"
+                className="bg-white/5 p-6 rounded-lg mb-6 font-mono text-gray-300"
               >
                 {recognizedText}
               </motion.div>
+
+              {/* Summarize Button */}
+              {onSummarize && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex justify-center mb-6"
+                >
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-300"
+                    onClick={() => onSummarize(recognizedText)}
+                  >
+                    <Zap className="w-5 h-5" />
+                    Summarize Text
+                  </motion.button>
+                </motion.div>
+              )}
 
               <motion.div
                 initial={{ opacity: 0, y: 20 }}

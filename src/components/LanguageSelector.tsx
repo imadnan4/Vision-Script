@@ -57,11 +57,11 @@ const LanguageSelector: React.FC<Props> = ({ selectedLanguage, onLanguageChange 
       <motion.button
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        className="flex items-center gap-2 bg-white/5 hover:bg-white/10 px-4 py-2 rounded-lg backdrop-blur-sm transition-colors"
+        className="flex items-center gap-2 bg-white/80 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 px-4 py-2 rounded-lg backdrop-blur-sm transition-colors border border-gray-200 dark:border-white/10"
         onClick={handleToggleDropdown}
       >
-        <Globe className="w-4 h-4 text-white/80" />
-        <span className="text-white/80">
+        <Globe className="w-4 h-4 text-gray-600 dark:text-white/80" />
+        <span className="text-gray-700 dark:text-white/80">
           {isLoading ? 'Loading...' : languages[selectedLanguage] || 'English'}
         </span>
       </motion.button>
@@ -72,16 +72,16 @@ const LanguageSelector: React.FC<Props> = ({ selectedLanguage, onLanguageChange 
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.2 }}
-          className="absolute z-10 mt-2 w-48 rounded-md bg-zinc-800 shadow-lg ring-1 ring-black ring-opacity-5 max-h-60 overflow-y-auto"
+          className="absolute z-20 mt-2 w-48 rounded-md bg-white dark:bg-zinc-800 shadow-lg ring-1 ring-gray-200 dark:ring-black ring-opacity-5 max-h-60 overflow-y-auto border border-gray-200 dark:border-gray-700"
         >
           <div className="py-1">
             {Object.entries(languages).map(([code, name]) => (
               <button
                 key={code}
-                className={`block px-4 py-2 text-sm w-full text-left ${
+                className={`block px-4 py-2 text-sm w-full text-left transition-colors ${
                   selectedLanguage === code
-                    ? 'bg-zinc-700 text-white'
-                    : 'text-gray-300 hover:bg-zinc-700 hover:text-white'
+                    ? 'bg-blue-50 dark:bg-zinc-700 text-blue-700 dark:text-white font-medium'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-zinc-700 hover:text-gray-900 dark:hover:text-white'
                 }`}
                 onClick={() => handleSelectLanguage(code)}
               >

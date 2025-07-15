@@ -1,3 +1,82 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Theme Performance Optimizations */
+@layer base {
+  /* Prevent FOUC (Flash of Unstyled Content) */
+  html {
+    color-scheme: light dark;
+  }
+
+  /* Smooth theme transitions for all elements */
+  * {
+    transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 300ms;
+  }
+
+  /* Optimize for theme switching performance */
+  .theme-transition {
+    transition: background-color 0.3s ease-in-out,
+                border-color 0.3s ease-in-out,
+                color 0.3s ease-in-out;
+  }
+
+  /* Accessibility improvements */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* Focus management for theme toggle */
+  .theme-toggle:focus-visible {
+    outline: 2px solid rgb(59 130 246);
+    outline-offset: 2px;
+  }
+
+  /* High contrast mode support */
+  @media (prefers-contrast: high) {
+    .light {
+      --tw-bg-opacity: 1;
+      --tw-text-opacity: 1;
+    }
+
+    .dark {
+      --tw-bg-opacity: 1;
+      --tw-text-opacity: 1;
+    }
+  }
+
+  /* Ensure proper contrast ratios */
+  .light {
+    color-scheme: light;
+  }
+
+  .dark {
+    color-scheme: dark;
+  }
+}
+
+/* Custom utilities for theme-aware components */
+@layer utilities {
+  .transition-theme {
+    transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 300ms;
+  }
+
+  /* Smooth scrolling for better UX */
+  .smooth-scroll {
+    scroll-behavior: smooth;
+  }
+
+  /* GPU acceleration for animations */
+  .gpu-accelerated {
+    transform: translateZ(0);
+    will-change: transform;
+  }
+}
