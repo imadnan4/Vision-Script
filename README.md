@@ -2,7 +2,7 @@
 
 A cutting-edge text extraction and summarization solution built with React, TypeScript, and Python, featuring a modern tech stack and intelligent document processing capabilities. Transform your physical documents into digital format with ease and precision.
 
-## 🚀 Recent Updates
+##  Recent Updates
 
 - **AI Text Summarization** - Added intelligent text summarization with OpenRouter Mistral integration
 - **PDF Support** - Upload and process PDF documents for text extraction and summarization
