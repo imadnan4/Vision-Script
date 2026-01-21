@@ -11,7 +11,7 @@ A cutting-edge text extraction and summarization solution built with React, Type
 - **UI Improvements** - Enhanced user interface for better user experience
 - **Backend Optimization** - Improved text detection accuracy and processing speed
 
-## 🌟 Key Features
+##  Key Features
 
 ### 📸 Smart Document Capture
 - Drag-and-drop file upload support
