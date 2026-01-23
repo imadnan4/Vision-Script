@@ -20,7 +20,7 @@ A cutting-edge text extraction and summarization solution built with React, Type
 - Support for multiple image formats (JPG, PNG, BMP)
 - Advanced image preprocessing for optimal results
 
-### 🔍 Powerful OCR Processing
+###  Powerful OCR Processing
 - High-accuracy text extraction using Tesseract OCR
 - Smart document layout analysis
 - Automatic document deskewing and orientation correction
