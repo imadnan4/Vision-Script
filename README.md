@@ -13,7 +13,7 @@ A cutting-edge text extraction and summarization solution built with React, Type
 
 ##  Key Features
 
-### 📸 Smart Document Capture
+###  Smart Document Capture
 - Drag-and-drop file upload support
 - Real-time camera-based document scanning
 - Intelligent frame capture and processing
